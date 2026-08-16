@@ -45,15 +45,15 @@ jobs:
       - name: Restore cross-platform game assets
         uses: actions/cache/restore@v5
         with:
-          path: ~/generalsx-ci-assets
-          key: game-assets-cross-os-v1
+          path: .ci-assets
+          key: game-assets-cross-os-v2
           enableCrossOsArchive: true
           fail-on-cache-miss: true
 
       - name: Install game assets
         shell: pwsh
         run: |
-          $assetCache = Join-Path $HOME "generalsx-ci-assets"
+          $assetCache = Join-Path $env:GITHUB_WORKSPACE ".ci-assets"
           Copy-Item (Join-Path $assetCache "*") $env:GAME_DIR -Recurse -Force
           if (!(Get-ChildItem $env:GAME_DIR -Filter "*.big")) {
             throw "No BIG files were installed"
