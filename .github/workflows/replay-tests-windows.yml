@@ -59,6 +59,38 @@ jobs:
             throw "No BIG files were installed"
           }
 
+          $languageCandidates = [ordered]@{
+            "BrazilianZH.big" = "brazilian"
+            "EnglishZH.big" = "english"
+            "GermanZH.big" = "german"
+            "FrenchZH.big" = "french"
+            "SpanishZH.big" = "spanish"
+            "ChineseZH.big" = "chinese"
+            "KoreanZH.big" = "korean"
+            "PolishZH.big" = "polish"
+          }
+          $language = $null
+          foreach ($candidate in $languageCandidates.GetEnumerator()) {
+            if (Test-Path (Join-Path $env:GAME_DIR $candidate.Key)) {
+              $language = $candidate.Value
+              break
+            }
+          }
+          if (!$language) {
+            throw "No supported language BIG file was installed"
+          }
+
+          $registryPath = "HKCU\SOFTWARE\Electronic Arts\EA Games\Command and Conquer Generals Zero Hour"
+          & reg.exe ADD $registryPath /v Language /t REG_SZ /d $language /f /reg:32
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to configure the Zero Hour language registry value"
+          }
+          & reg.exe ADD $registryPath /v InstallPath /t REG_SZ /d $env:GAME_DIR /f /reg:32
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to configure the Zero Hour installation registry value"
+          }
+          Write-Host "Configured Zero Hour language: $language"
+
       - name: Download replay files
         shell: pwsh
         run: |
