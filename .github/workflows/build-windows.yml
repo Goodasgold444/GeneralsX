@@ -44,9 +44,22 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
+          New-Item -ItemType Directory -Force ci-artifacts | Out-Null
           Copy-Item build/win32-vcpkg/GeneralsMD/Release/generalszh.exe artifacts/
           Copy-Item build/win32-vcpkg/GeneralsMD/Release/generalszh.pdb artifacts/
           Copy-Item build/win32-vcpkg/vcpkg_installed/x86-windows/bin/zlib1.dll artifacts/
+          Copy-Item build/win32-vcpkg/GeneralsMD/Release/generalszh.exe ci-artifacts/
+          Copy-Item build/win32-vcpkg/vcpkg_installed/x86-windows/bin/zlib1.dll ci-artifacts/
+
+          foreach ($name in @("binkw32.dll", "mss32.dll")) {
+            $stub = Get-ChildItem build/win32-vcpkg -Filter $name -Recurse |
+              Select-Object -First 1
+            if ($null -eq $stub) {
+              throw "Required CI stub not found: $name"
+            }
+            Copy-Item $stub.FullName ci-artifacts/
+          }
+
           @"
           Copy these files into an existing licensed Zero Hour installation.
           Keep the installation's original binkw32.dll and mss32.dll; the build-time
@@ -54,8 +67,15 @@ jobs:
           "@ | Set-Content artifacts/INSTALL.txt
 
       - name: Upload runtime
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: generalsxzh-windows-x86
           path: artifacts
           retention-days: 7
+
+      - name: Upload replay-test runtime
+        uses: actions/upload-artifact@v7
+        with:
+          name: generalsxzh-windows-x86-ci
+          path: ci-artifacts
+          retention-days: 1
