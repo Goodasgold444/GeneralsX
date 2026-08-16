@@ -162,11 +162,13 @@ jobs:
           "|--------|--------|--------|---------|" >> $env:GITHUB_STEP_SUMMARY
 
           foreach ($replay in $replays) {
+            Write-Host "=== $($replay.Name) ==="
             $stdout = Join-Path $env:RUNNER_TEMP "$($replay.BaseName)-stdout.log"
             $stderr = Join-Path $env:RUNNER_TEMP "$($replay.BaseName)-stderr.log"
+            $arguments = "-headless -replay `"$($replay.FullName)`""
             $process = Start-Process `
               -FilePath $env:GAME_BIN `
-              -ArgumentList @("-headless", "-replay", $replay.Name) `
+              -ArgumentList $arguments `
               -WorkingDirectory $env:GAME_DIR `
               -RedirectStandardOutput $stdout `
               -RedirectStandardError $stderr `
