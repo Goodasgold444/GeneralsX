@@ -122,13 +122,11 @@ jobs:
 
   replay-test-windows:
     name: Replay Tests (windows)
-    needs: [build-windows]
-    if: needs.build-windows.result == 'success'
+    needs: [build-windows, replay-test-linux]
+    if: needs.build-windows.result == 'success' && needs.replay-test-linux.result == 'success'
     uses: ./.github/workflows/replay-tests-windows.yml
     with:
       game-artifact: generalsxzh-windows-x86-ci
-    secrets:
-      ASSETS_KEY: ${{ secrets.ASSETS_KEY }}
 
   ci-summary:
     name: CI Summary

@@ -14,10 +14,6 @@ on:
         required: false
         type: string
         description: "Optional workflow run ID to download artifacts from"
-    secrets:
-      ASSETS_KEY:
-        required: true
-        description: "Password for generalszh.7z in the test-files repository"
 
 jobs:
   replay-test-zh:
@@ -46,65 +42,18 @@ jobs:
           "GAME_DIR=$gameDir" >> $env:GITHUB_ENV
           "GAME_BIN=$(Join-Path $gameDir 'generalszh.exe')" >> $env:GITHUB_ENV
 
-      - name: Cache game assets
-        id: cache-assets
-        uses: actions/cache@v5
+      - name: Restore cross-platform game assets
+        uses: actions/cache/restore@v5
         with:
-          path: ${{ runner.temp }}/cached-assets
-          key: game-assets-cache-windows-v1
-
-      - name: Download game assets
-        if: steps.cache-assets.outputs.cache-hit != 'true'
-        shell: pwsh
-        run: |
-          $targetBranch = if ($env:GITHUB_HEAD_REF) { $env:GITHUB_HEAD_REF } else { $env:GITHUB_REF_NAME }
-          $repoDir = Join-Path $env:RUNNER_TEMP "ci-assets-repo"
-          $cloneSucceeded = $false
-
-          foreach ($url in @(
-            "https://gitlab.com/fbraz3/generalsx-test-files.git",
-            "https://github.com/fbraz3/generalsx-test-files.git"
-          )) {
-            Remove-Item $repoDir -Recurse -Force -ErrorAction SilentlyContinue
-            git clone $url $repoDir
-            if ($LASTEXITCODE -ne 0) {
-              continue
-            }
-
-            Push-Location $repoDir
-            if ($targetBranch -and $targetBranch -ne "main") {
-              $remoteBranch = git ls-remote --heads origin $targetBranch
-              if ($remoteBranch) {
-                git fetch origin $targetBranch
-                git checkout $targetBranch
-              }
-            }
-            git lfs install
-            git lfs pull
-            $cloneSucceeded = $LASTEXITCODE -eq 0
-            Pop-Location
-
-            if ($cloneSucceeded) {
-              break
-            }
-          }
-
-          if (!$cloneSucceeded) {
-            throw "Unable to download game assets"
-          }
-
-          $assetCache = Join-Path $env:RUNNER_TEMP "cached-assets"
-          New-Item -ItemType Directory -Force $assetCache | Out-Null
-          $archive = Join-Path $repoDir "generalszh.7z"
-          & "$env:ProgramFiles\7-Zip\7z.exe" x "-p${{ secrets.ASSETS_KEY }}" $archive "-o$assetCache" -y
-          if ($LASTEXITCODE -ne 0) {
-            throw "Unable to extract game assets"
-          }
+          path: ~/generalsx-ci-assets
+          key: game-assets-cross-os-v1
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
 
       - name: Install game assets
         shell: pwsh
         run: |
-          $assetCache = Join-Path $env:RUNNER_TEMP "cached-assets"
+          $assetCache = Join-Path $HOME "generalsx-ci-assets"
           Copy-Item (Join-Path $assetCache "*") $env:GAME_DIR -Recurse -Force
           if (!(Get-ChildItem $env:GAME_DIR -Filter "*.big")) {
             throw "No BIG files were installed"
