@@ -1,0 +1,50 @@
+name: Deterministic Win32 ZH
+
+permissions:
+  contents: read
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Up VC2022 x86 Environment
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x86
+
+      - name: Configure (win32, deterministic math)
+        shell: pwsh
+        run: |
+          cmake --preset win32 `
+            -DRTS_BUILD_ZEROHOUR=ON `
+            -DRTS_BUILD_GENERALS=OFF `
+            -DSAGE_USE_DETERMINISTIC_MATH=ON `
+            -DRTS_BUILD_CORE_TOOLS=OFF `
+            -DRTS_BUILD_ZEROHOUR_TOOLS=OFF `
+            -DRTS_BUILD_CORE_EXTRAS=OFF `
+            -DRTS_BUILD_ZEROHOUR_EXTRAS=OFF
+
+      - name: Build Zero Hour
+        shell: pwsh
+        run: cmake --build --preset win32 --target z_generals
+
+      - name: Collect binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory bundle | Out-Null
+          Get-ChildItem -Recurse build\win32 -Include *.exe,*.dll |
+            Where-Object { $_.FullName -notmatch '_deps|CMakeFiles' } |
+            Copy-Item -Destination bundle -Verbose
+          Get-ChildItem bundle
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zh-deterministic-win32
+          path: bundle
